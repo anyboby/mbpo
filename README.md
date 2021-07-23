@@ -2,6 +2,51 @@
 A version of mbpo with a few memory leak fixes, working saving/restoring, and an additional environment suite (mujoco safety gym).
 Usage is the same as the original mbpo algorithm (see below).
 
+BRANCH rllab:
+this includes an implementation for rllab. To install rllab, follow these instructions:
+
+### rllab install 
+
+create env.
+
+```bash
+cd mbpo
+conda env create -f environment/gpu-env.yml
+conda activate mbpo_rllab
+pip install -e viskit
+pip install -e .
+conda install --file environment/rllab_req.txt
+pip install -r environment/rllab_pip.txt
+```
+add rllab and rename to avoid module import confusion.
+```bash
+git submodule add -f https://github.com/rll/rllab.git softlearning/environments/rllab
+mv softlearning/environments/rllab/ softlearning/environments/rllab_dir
+cd softlearning/environments/rllab_dir/ && echo "">__init__.py
+git submodule add -f https://github.com/jachiam/cpo sandbox/cpo
+```
+
+download mujoco131:
+```bash
+wget https://www.roboti.us/download/mjpro131_linux.zip
+./scripts/setup_mujoco.sh
+        <Enter mjpro131_linx.zip for mujoco path>
+        <Enter path to mujoco license file>
+```
+
+fix import error in rllab (using vim or any editor of choice)
+```bash
+cd rllab/rllab/envs/
+vim proxy_env.py
+```
+
+comment out the line 
+```bash
+# Serializable.quick_init(self, locals())
+```
+This should suffice to make rllab experiments (found in experiments/config) working. 
+
+# MBPO
 
 Code to reproduce the experiments in [When to Trust Your Model: Model-Based Policy Optimization](https://arxiv.org/abs/1906.08253).
 

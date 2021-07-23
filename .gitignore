@@ -118,3 +118,7 @@ vendor/*
 
 .mujoco/
 .vscode/
+
+# rllab
+softlearning/environments/rllab_dir
+softlearning/environments/rllab
