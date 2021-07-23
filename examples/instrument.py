@@ -275,6 +275,7 @@ def run_example_cluster(example_module_name, example_argv):
         num_gpus=example_args.gpus,
         local_mode=False,
         include_webui=example_args.include_webui,
+        object_store_memory=1000000000,
         temp_dir=example_args.temp_dir)
 
     tune.run_experiments(

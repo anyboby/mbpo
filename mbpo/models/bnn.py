@@ -407,8 +407,8 @@ class BNN:
         progress.stamp()
         if timer: timer.stamp('bnn_train')
 
-        self._set_state()
-        if timer: timer.stamp('bnn_set_state')
+        # self._set_state() ##@anyboby this keeps creating new nodes in tf graph. What is it necessary for ?
+        # if timer: timer.stamp('bnn_set_state')
 
         holdout_losses = self.sess.run(
             self.mse_loss,
@@ -494,7 +494,7 @@ class BNN:
         model_dir = self.model_dir if savedir is None else savedir
 
         # Write structure to file
-        with open(os.path.join(model_dir, '{}_{}.nns'.format(self.name, timestep)), "w+") as f:
+        with open(os.path.join(model_dir, '{}.nns'.format(self.name)), "w+") as f:
             for layer in self.layers[:-1]:
                 f.write("%s\n" % repr(layer))
             last_layer_copy = self.layers[-1].copy()
@@ -506,7 +506,7 @@ class BNN:
         var_vals = {}
         for i, var_val in enumerate(self.sess.run(self.nonoptvars + self.optvars)):
             var_vals[str(i)] = var_val
-        savemat(os.path.join(model_dir, '{}_{}.mat'.format(self.name, timestep)), var_vals)
+        savemat(os.path.join(model_dir, '{}.mat'.format(self.name)), var_vals)
 
     def _load_structure(self):
         """Uses the saved structure in self.model_dir with the name of this network to initialize

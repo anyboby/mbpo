@@ -23,6 +23,7 @@ from mbpo.utils.visualization import visualize_policy
 from mbpo.utils.logging import Progress
 import mbpo.utils.filesystem as filesystem
 
+import tracemalloc
 
 def td_target(reward, discount, next_value):
     return reward + discount * next_value
@@ -60,10 +61,12 @@ class MBPO(RLAlgorithm):
             store_extra_policy_info=False,
 
             deterministic=False,
+
             model_train_freq=250,
             num_networks=7,
             num_elites=5,
             model_retain_epochs=20,
+            load_model_dir = None,
             rollout_batch_size=100e3,
             real_ratio=0.1,
             rollout_schedule=[20,100,1,1],
@@ -97,16 +100,18 @@ class MBPO(RLAlgorithm):
 
         obs_dim = np.prod(training_environment.observation_space.shape)
         act_dim = np.prod(training_environment.action_space.shape)
-        self._model = construct_model(obs_dim=obs_dim, act_dim=act_dim, hidden_dim=hidden_dim, num_networks=num_networks, num_elites=num_elites)
+
+        self._model_params = dict(obs_dim=obs_dim, act_dim=act_dim, hidden_dim=hidden_dim, num_networks=num_networks, num_elites=num_elites)
+        if load_model_dir is not None:
+            self._model_params['load_model'] = True
+            self._model_params['model_dir'] = load_model_dir
+        self._model = construct_model(**self._model_params)
+    
         self._static_fns = static_fns
         self.fake_env = FakeEnv(self._model, self._static_fns)
 
         self._rollout_schedule = rollout_schedule
         self._max_model_t = max_model_t
-
-        # self._model_pool_size = model_pool_size
-        # print('[ MBPO ] Model pool size: {:.2E}'.format(self._model_pool_size))
-        # self._model_pool = SimpleReplayPool(pool._observation_space, pool._action_space, self._model_pool_size)
 
         self._model_retain_epochs = model_retain_epochs
 
@@ -149,6 +154,15 @@ class MBPO(RLAlgorithm):
 
         observation_shape = self._training_environment.active_observation_shape
         action_shape = self._training_environment.action_space.shape
+
+        ### @ anyboby fixed pool size, reallocate causes memory leak
+        obs_space = self._pool._observation_space
+        act_space = self._pool._action_space
+        rollouts_per_epoch = self._rollout_batch_size * self._epoch_length / self._model_train_freq
+        model_steps_per_epoch = int(self._rollout_schedule[-1] * rollouts_per_epoch)
+        mpool_size = self._model_retain_epochs * model_steps_per_epoch
+
+        self._model_pool = SimpleReplayPool(obs_space, act_space, mpool_size)
 
         assert len(observation_shape) == 1, observation_shape
         self._observation_shape = observation_shape
@@ -195,7 +209,7 @@ class MBPO(RLAlgorithm):
         gt.set_def_unique(False)
 
         self._training_before_hook()
-
+        
         for self._epoch in gt.timed_for(range(self._epoch, self._n_epochs)):
 
             self._epoch_before_hook()
@@ -213,7 +227,7 @@ class MBPO(RLAlgorithm):
 
                 self._timestep_before_hook()
                 gt.stamp('timestep_before_hook')
-
+        
                 if self._timestep % self._model_train_freq == 0 and self._real_ratio < 1.0:
                     self._training_progress.pause()
                     print('[ MBPO ] log_dir: {} | ratio: {}'.format(self._log_dir, self._real_ratio))
@@ -224,12 +238,16 @@ class MBPO(RLAlgorithm):
                     model_train_metrics = self._train_model(batch_size=256, max_epochs=None, holdout_ratio=0.2, max_t=self._max_model_t)
                     model_metrics.update(model_train_metrics)
                     gt.stamp('epoch_train_model')
-                    
+            
                     self._set_rollout_length()
-                    self._reallocate_model_pool()
-                    model_rollout_metrics = self._rollout_model(rollout_batch_size=self._rollout_batch_size, deterministic=self._deterministic)
+                    if self._rollout_batch_size>30000:
+                        factor = self._rollout_batch_size//30000+1
+                        mini_batch = self._rollout_batch_size//factor
+                        for i in range(factor):
+                            model_rollout_metrics = self._rollout_model(rollout_batch_size=mini_batch, deterministic=self._deterministic)
+                    else:
+                        model_rollout_metrics = self._rollout_model(rollout_batch_size=self._rollout_batch_size, deterministic=self._deterministic)
                     model_metrics.update(model_rollout_metrics)
-                    
 
                     gt.stamp('epoch_rollout_model')
                     # self._visualize_model(self._evaluation_environment, self._total_timestep)
@@ -237,6 +255,7 @@ class MBPO(RLAlgorithm):
 
                 self._do_sampling(timestep=self._total_timestep)
                 gt.stamp('sample')
+
 
                 if self.ready_to_train:
                     self._do_training_repeats(timestep=self._total_timestep)
@@ -741,3 +760,6 @@ class MBPO(RLAlgorithm):
             saveables['_alpha_optimizer'] = self._alpha_optimizer
 
         return saveables
+
+    def save_model(self, dir):
+        self._model.save(savedir=dir, timestep=self._epoch+1)

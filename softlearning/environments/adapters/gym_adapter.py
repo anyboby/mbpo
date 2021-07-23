@@ -8,7 +8,7 @@ from .softlearning_env import SoftlearningEnv
 from softlearning.environments.gym import register_environments
 from softlearning.environments.gym.wrappers import NormalizeActionWrapper
 from collections import defaultdict
-
+import softlearning.environments.mujoco_safety_gym
 
 def parse_domain_task(gym_id):
     domain_task_parts = gym_id.split('-')

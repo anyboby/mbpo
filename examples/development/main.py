@@ -5,6 +5,8 @@ import pickle
 import sys
 import pdb
 
+import gc
+
 import tensorflow as tf
 from ray import tune
 
@@ -143,7 +145,13 @@ class ExperimentRunner(tune.Trainable):
             file_prefix=self._tf_checkpoint_prefix(checkpoint_dir),
             session=self._session)
 
+        if self._variant['algorithm_params']['type']=='MBPO':
+            self.algorithm.save_model(checkpoint_dir)
+
         return os.path.join(checkpoint_dir, '')
+
+
+
 
     def _save_replay_pool(self, checkpoint_dir):
         replay_pool_pickle_path = self._replay_pool_pickle_path(
@@ -167,6 +175,8 @@ class ExperimentRunner(tune.Trainable):
 
         checkpoint_dir = checkpoint_dir.rstrip('/')
 
+        gc.disable() ### speeds up pickle load
+
         with self._session.as_default():
             pickle_path = self._pickle_path(checkpoint_dir)
             with open(pickle_path, 'rb') as f:
@@ -180,8 +190,12 @@ class ExperimentRunner(tune.Trainable):
         replay_pool = self.replay_pool = (
             get_replay_pool_from_variant(self._variant, training_environment))
 
+        gc.enable()
+
         if self._variant['run_params'].get('checkpoint_replay_pool', False):
             self._restore_replay_pool(checkpoint_dir)
+
+        static_fns = mbpo.static[training_environment._domain.lower()]
 
         sampler = self.sampler = picklable['sampler']
         Qs = self.Qs = picklable['Qs']
@@ -200,7 +214,9 @@ class ExperimentRunner(tune.Trainable):
             initial_exploration_policy=initial_exploration_policy,
             Qs=Qs,
             pool=replay_pool,
+            static_fns=static_fns,
             sampler=sampler,
+            load_model_dir = checkpoint_dir,
             session=self._session)
         self.algorithm.__setstate__(picklable['algorithm'].__getstate__())
 

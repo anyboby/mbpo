@@ -1,4 +1,7 @@
 # Model-Based Policy Optimization
+A version of mbpo with a few memory leak fixes, working saving/restoring, and an additional environment suite (mujoco safety gym).
+Usage is the same as the original mbpo algorithm (see below).
+
 
 Code to reproduce the experiments in [When to Trust Your Model: Model-Based Policy Optimization](https://arxiv.org/abs/1906.08253).
 
