@@ -10,7 +10,7 @@ params = {
     'kwargs': {
         'epoch_length': 1000,
         'train_every_n_steps': 1,
-        'n_train_repeat': 20,
+        'n_train_repeat': 5,
         'eval_render_mode': None,
         'eval_n_episodes': 1,
         'eval_deterministic': True,
@@ -25,7 +25,7 @@ params = {
         'deterministic': False,
         'num_networks': 7,
         'num_elites': 5,
-        'real_ratio': 0.05,
+        'real_ratio': 0.1,
         'target_entropy': -3,
         'max_model_t': 10,
         'rollout_schedule': [20, 150, 1, 1],
