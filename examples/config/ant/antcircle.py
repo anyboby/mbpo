@@ -9,8 +9,9 @@ params = {
 
     'kwargs': {
         'epoch_length': 1000,
+        'n_epochs': 5000,
         'train_every_n_steps': 1,
-        'n_train_repeat': 10,
+        'n_train_repeat': 5,
         'eval_render_mode': None,
         'eval_n_episodes': 1,
         'eval_deterministic': True,
