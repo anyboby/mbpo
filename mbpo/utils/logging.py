@@ -11,7 +11,7 @@ class Progress:
 		self.max_length = max_length
 		self.indent = indent
 		self.line_width = line_width
-		self._speed_update_freq = speed_update_freq
+		self._speed_update_freq, self._speed = speed_update_freq, 0
 
 		self._step = 0
 		self._prev_line = '\033[F'
